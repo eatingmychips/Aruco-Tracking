@@ -82,11 +82,11 @@ def main():
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
 
     camera.Open()
-    pylon.FeaturePersistence.Load(r"C:\Users\s4582705\OneDrive\BioRoboticsLab\ARUCO\ARUCO1200.pfs", camera.GetNodeMap())
+    pylon.FeaturePersistence.Load(r"G:\biorobotics\data\InvertedClimbing\ARUCO1200.pfs", camera.GetNodeMap())
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     parameters = cv2.aruco.DetectorParameters()
-
+    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
         # Initialize the previous button states correctly
     if joysticks:
         previous_button_states = [False] * joysticks[0].get_numbuttons()
@@ -173,7 +173,7 @@ def main():
                 image = converter.Convert(grab_result)
                 img = image.GetArray()
                 
-                corners, ids, _ = cv2.aruco.detectMarkers(img, aruco_dict, parameters=parameters)
+                corners, ids, rejected = detector.detectMarkers(img)
                 if ids is not None and 1 in ids:
                     idx = list(ids.flatten()).index(1)
                     marker_corners = corners[idx][0]
