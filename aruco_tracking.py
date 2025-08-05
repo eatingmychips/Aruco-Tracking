@@ -75,7 +75,17 @@ def read_arduino_data(ser):
             print(f"Error reading from serial: {e}")
     return None
 
-
+def get_command(dur, freq, selection):
+    dur_hex = hex(int(dur/10))[2:].zfill(2)
+    freq_hex = hex(int(freq))[2:].zfill(2)
+    prefix = "B1"
+    # Command prefixes for each selection
+    cmds = {
+        "Both": "E0",
+        "Left": "A0",
+        "Right": "B0"
+    }
+    return prefix + cmds[selection] + dur_hex + freq_hex
 
 def main():
     global recording, pose_data_list, selected_directory, last_control_time
@@ -111,7 +121,7 @@ def main():
     record_button.config(state="normal")
     
     # Set initial frequency to 10
-    freq = 10
+    dur = 500
     try:
         while camera.IsGrabbing():
             com_port = selected_port.get()
@@ -130,20 +140,26 @@ def main():
 
                             if button == 0: # A Button
                                 print("We have pressed button: 'A', stimulating both elytra")
-                                char = 'A'
-                                SerialObj.write(str.encode(char))
+                                side = "Both"
+                                freq = int(frequency_var.get())
+                                message = get_command(dur, freq, side)
+                                SerialObj.write(message.encode('utf-8'))
                                 data = (f"Both, {freq}")
 
                             elif button == 3: # Y Button
                                 print("We have pressed button: 'Y', stimulating right antenna")
-                                char = 'Y'
-                                SerialObj.write(str.encode(char))
+                                side = "Right"
+                                freq = int(frequency_var.get())
+                                message = get_command(dur, freq, side)
+                                SerialObj.write(message.encode('utf-8'))
                                 data = (f"Right, {freq}")
 
                             elif button == 2:  # X Button
                                 print("We have pressed button: 'X', stimulating left antenna")
-                                char = 'X'
-                                SerialObj.write(str.encode(char))
+                                side = "Left"
+                                freq = int(frequency_var.get())
+                                message = get_command(dur, freq, side)
+                                SerialObj.write(message.encode('utf-8'))
                                 data = (f"Left, {freq}")
 
                             elif button == 1:  # B Button
@@ -155,20 +171,10 @@ def main():
                                 print("We have pressed Right Bumper, initiating Stop")
                                 char = 'S'
                                 SerialObj.write(str.encode(char))
-
-                            elif button == 7:
-                                print("Start Button has been pressed (increasing frequency)")
-                                freq += 10
-                                if freq == 60: # Max frequency of 50Hz
-                                    freq = 10  # Reset to 10Hz
-                                    
-                                frequency_display.config( text=f"The current frequency is: {freq} Hz")
-                                char = 'I'
-                                SerialObj.write(str.encode(char))
                             
-
                         # Update the previous state for the next iteration
                         previous_button_states[button] = current_button_state
+                        
                 # Access the image data
                 image = converter.Convert(grab_result)
                 img = image.GetArray()
@@ -267,9 +273,17 @@ file_button.pack(pady=20)
 record_button = ttk.Button(left_frame, text="Start Recording", style='Recording.TButton', command = toggle_recording, state = "disabled")
 record_button.pack(pady=(20, 5))
 
-freq = 10
-frequency_display = tk.Label(left_frame, text=f"The current frequency is: {freq} Hz", width=35, height=5, font=('Helvetica', 13))
-frequency_display.pack(pady=(20, 5))
+
+freq_row = tk.Frame(left_frame)
+freq_row.pack(pady=(20, 5))
+
+frequency_display = tk.Label(freq_row, text="Frequency (Hz):", font=('Helvetica', 10))
+frequency_display.grid(row=0, column=0, padx=(0, 5))
+
+frequency_var = tk.StringVar(value="10")
+freq_entry = tk.Entry(freq_row, textvariable=frequency_var, width=5)
+freq_entry.grid(row=0, column=1)
+
 
 # Add instructions to the right frame
 instructions_label = tk.Label(right_frame, text="Instructions:\n1. Select a COM port.\n2. Choose a directory to store recorded data.\n3. Start recording.",
