@@ -13,7 +13,7 @@ import tkinter as tk
 from tkinter import ttk
 import serial.tools.list_ports
 from tkinter import filedialog
-
+import random
 
 
 # Global variable for recording state
@@ -22,6 +22,7 @@ recording = False
 pose_data_list = []
 arduino_data = None
 directory_selected_flag = False
+frequency_var = "10"
 
 pygame.init()
 pygame.joystick.init()
@@ -161,16 +162,10 @@ def main():
                                 message = get_command(dur, freq, side)
                                 SerialObj.write(message.encode('utf-8'))
                                 data = (f"Left, {freq}")
-
-                            elif button == 1:  # B Button
-                                print("We have pressed button: 'B', initiating backwards walking")
-                                char = 'B'
-                                SerialObj.write(str.encode(char))
-
-                            elif button == 5: #Right Bumper
-                                print("We have pressed Right Bumper, initiating Stop")
-                                char = 'S'
-                                SerialObj.write(str.encode(char))
+                            
+                            elif button == 7: 
+                                print("Start button pressed: Random Frequency")
+                                rand_freq()
                             
                         # Update the previous state for the next iteration
                         previous_button_states[button] = current_button_state
@@ -224,7 +219,11 @@ def directory_press():
     global selected_directory
     selected_directory = filedialog.askdirectory()
     
-
+def rand_freq(): 
+    possible_freqs = [10, 20, 30, 40, 50]
+    rand_freq = str(random.choice(possible_freqs))
+    frequency_var.set(rand_freq)
+                      
 
 # GUI setup
 root = tk.Tk()
@@ -233,6 +232,7 @@ root.title("Recording Control")
 style = ttk.Style()
 style.configure('Recording.TButton', font=('Helvetica', 20))
 style.configure('FileDirectory.TButton', font=('Helvetica', 10))
+style.configure('Randomiser.TButton', font=('Helvetica', 10))
 
 style.map('Comport.TCombobox',
     fieldbackground=[('readonly', 'red')],
@@ -284,13 +284,14 @@ frequency_var = tk.StringVar(value="10")
 freq_entry = tk.Entry(freq_row, textvariable=frequency_var, width=5)
 freq_entry.grid(row=0, column=1)
 
-
+randomiser_button = ttk.Button(freq_row, text = "Random Frequency", style = "Randomiser.TButton", command = rand_freq, state = "normal")
+randomiser_button.grid(row = 1, column=1)
 # Add instructions to the right frame
 instructions_label = tk.Label(right_frame, text="Instructions:\n1. Select a COM port.\n2. Choose a directory to store recorded data.\n3. Start recording.",
                               justify=tk.LEFT, anchor='w', font=('Helvetica', 10), wraplength=300)
 instructions_label.pack(pady=20, fill='x')
 
-stimulation_instructions = tk.Label(right_frame, text="Press X to stimulate left antenna.\nPress Y to stimulate right antenna.\nPress A to stimulate both elytra.\nPress Start to increase frequency",
+stimulation_instructions = tk.Label(right_frame, text="Press X to stimulate left antenna.\nPress Y to stimulate right antenna.\nPress A to stimulate both elytra.\nPress Start to Randomise frequency",
                                     justify=tk.LEFT, anchor='w', font=('Helvetica', 10), wraplength=300)
 stimulation_instructions.pack(pady=20, fill='x')
 
