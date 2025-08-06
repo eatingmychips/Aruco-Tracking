@@ -174,7 +174,7 @@ def main():
                             
                         # Update the previous state for the next iteration
                         previous_button_states[button] = current_button_state
-                        
+
                 # Access the image data
                 image = converter.Convert(grab_result)
                 img = image.GetArray()
