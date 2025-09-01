@@ -31,8 +31,6 @@ joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_coun
 selected_directory = None
 
 
-
-
 # GUI function to toggle recording
 def toggle_recording():
     global recording, pose_data_list
@@ -89,11 +87,11 @@ def get_command(dur, freq, selection):
     return prefix + cmds[selection] + dur_hex + freq_hex
 
 def main():
-    global recording, pose_data_list, selected_directory, last_control_time
+    global recording, pose_data_list, selected_directory
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
 
     camera.Open()
-    pylon.FeaturePersistence.Load(r"G:\biorobotics\data\InvertedClimbing\ARUCO1200.pfs", camera.GetNodeMap())
+    pylon.FeaturePersistence.Load(r"G:\biorobotics\data\Vertical&InvertedClimbing\CameraFiles\ARUCOFlat.pfs", camera.GetNodeMap())
 
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
     parameters = cv2.aruco.DetectorParameters()
@@ -143,7 +141,7 @@ def main():
                                 print("We have pressed button: 'A', stimulating both elytra")
                                 side = "Both"
                                 freq = int(frequency_var.get())
-                                message = get_command(dur, freq, side)
+                                message = get_command(dur, freq, side) + '\n'
                                 SerialObj.write(message.encode('utf-8'))
                                 data = (f"Both, {freq}")
 
@@ -151,7 +149,7 @@ def main():
                                 print("We have pressed button: 'Y', stimulating right antenna")
                                 side = "Right"
                                 freq = int(frequency_var.get())
-                                message = get_command(dur, freq, side)
+                                message = get_command(dur, freq, side) + '\n'
                                 SerialObj.write(message.encode('utf-8'))
                                 data = (f"Right, {freq}")
 
@@ -159,7 +157,7 @@ def main():
                                 print("We have pressed button: 'X', stimulating left antenna")
                                 side = "Left"
                                 freq = int(frequency_var.get())
-                                message = get_command(dur, freq, side)
+                                message = get_command(dur, freq, side) + '\n'
                                 SerialObj.write(message.encode('utf-8'))
                                 data = (f"Left, {freq}")
                             
@@ -175,6 +173,7 @@ def main():
                 img = image.GetArray()
                 
                 corners, ids, rejected = detector.detectMarkers(img)
+                insect_pose = [None, None, None]
                 if ids is not None and 1 in ids:
                     idx = list(ids.flatten()).index(1)
                     marker_corners = corners[idx][0]
@@ -184,11 +183,11 @@ def main():
                     insect_pose = [center[0], center[1], angle]
 
                     # Optionally display
-                    cv2.aruco.drawDetectedMarkers(img, [corners[idx]])
-                    cv2.circle(img, tuple(center.astype(int)), 5, (0,255,0), -1)
-                    cv2.putText(img, f"Angle: {angle:.1f}", tuple(center.astype(int)), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
-                cv2.imshow('Frame', img)
+                #     cv2.aruco.drawDetectedMarkers(img, [corners[idx]])
+                #     cv2.circle(img, tuple(center.astype(int)), 5, (0,255,0), -1)
+                #     cv2.putText(img, f"Angle: {angle:.1f}", tuple(center.astype(int)), 
+                #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
+                # cv2.imshow('Frame', img)
                 
                 if recording: 
                     # Only process if marker ID 1 is detected
