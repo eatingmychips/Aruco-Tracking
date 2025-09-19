@@ -1,1 +1,1 @@
-Implementation of real-time tracking of cyborg insects 
+Implementation of real-time tracking of cyborg insects, use ID-1.pdf to print aruco marker. 

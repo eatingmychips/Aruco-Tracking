@@ -19,9 +19,11 @@ import random
 # Global variable for recording state
 #Test comment
 recording = False
-pose_data_list = []
+stimulation_log = []
 arduino_data = None
 directory_selected_flag = False
+recording_timestamp = None
+frame_no = 0
 frequency_var = "10"
 
 pygame.init()
@@ -30,27 +32,46 @@ joysticks = [pygame.joystick.Joystick(x) for x in range(pygame.joystick.get_coun
 
 selected_directory = None
 
+video_writer = None 
+stimulation_log = []
+
+image_width = 1312
+image_height = 824
 
 # GUI function to toggle recording
 def toggle_recording():
-    global recording, pose_data_list
+    global recording, video_writer, stimulation_log, frame_no, recording_timestamp
     if recording:
+        #Stop video recording
+        recording = False 
+        if video_writer is not None: 
+            video_writer.release()
+            video_writer = None
+        
         # Stop recording and save data to CSV
-        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        output_filename = os.path.join(selected_directory, f"pose_data_{timestamp}.csv")
+        output_filename = os.path.join(selected_directory, f"pose_data_{recording_timestamp}.csv")
         
         # Save pose data to CSV
-        df = pd.DataFrame(pose_data_list, columns=['time', 'pose', 'arduino_data'])
+        df = pd.DataFrame(stimulation_log, columns=['time', 'frame_no', 'arduino_data'])
         df.to_csv(output_filename, index=False)
-        
         print(f"Recording stopped. Data saved to {output_filename}")
-        pose_data_list = []  # Reset list after saving
-        recording = False
+
+        # Reset stimulation log and set button back to normal 
+
+        stimulation_log = []  # Reset list after saving
         record_button.config(text="Start Recording")
         style.configure('Recording.TButton', font=('Helvetica', 20), background = 'white', foreground = 'black')
     else:
         print("Started Recording")
         recording = True
+        
+        frame_no = 0
+        # Setup video writer 
+        recording_timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        video_filename = os.path.join(selected_directory, f"Video_{recording_timestamp}.avi")
+        fourcc = cv2.VideoWriter_fourcc(*'XVID')
+        video_writer = cv2.VideoWriter(video_filename, fourcc, 40.0, (image_width, image_height))
+
         record_button.config(text="Stop Recording")
         style.configure('Recording.TButton', font=('Helvetica', 20), background = 'red', foreground = 'salmon')
         style.configure('Comport.TCombobox', background = 'white', foreground = 'white')
@@ -87,15 +108,12 @@ def get_command(dur, freq, selection):
     return prefix + cmds[selection] + dur_hex + freq_hex
 
 def main():
-    global recording, pose_data_list, selected_directory
+    global recording, video_writer, stimulation_log, selected_directory, frame_no, recording_timestamp
     camera = pylon.InstantCamera(pylon.TlFactory.GetInstance().CreateFirstDevice())
 
     camera.Open()
-    pylon.FeaturePersistence.Load(r"G:\biorobotics\data\Vertical&InvertedClimbing\CameraFiles\VerticalClimbing.pfs", camera.GetNodeMap())
+    pylon.FeaturePersistence.Load(r"G:\biorobotics\data\Vertical&InvertedClimbing\CameraFiles\VerticalBigFrame.pfs", camera.GetNodeMap())
 
-    aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_4X4_50)
-    parameters = cv2.aruco.DetectorParameters()
-    detector = cv2.aruco.ArucoDetector(aruco_dict, parameters)
         # Initialize the previous button states correctly
     if joysticks:
         previous_button_states = [False] * joysticks[0].get_numbuttons()
@@ -171,27 +189,12 @@ def main():
                 # Access the image data
                 image = converter.Convert(grab_result)
                 img = image.GetArray()
-                
-                corners, ids, rejected = detector.detectMarkers(img)
-                insect_pose = [None, None, None]
-                if ids is not None and 1 in ids:
-                    idx = list(ids.flatten()).index(1)
-                    marker_corners = corners[idx][0]
-                    center = marker_corners.mean(axis=0)
-                    dx, dy = marker_corners[1] - marker_corners[0]
-                    angle = np.arctan2(dy, dx)
-                    insect_pose = [center[0], center[1], angle]
 
-                    # Optionally display
-                #     cv2.aruco.drawDetectedMarkers(img, [corners[idx]])
-                #     cv2.circle(img, tuple(center.astype(int)), 5, (0,255,0), -1)
-                #     cv2.putText(img, f"Angle: {angle:.1f}", tuple(center.astype(int)), 
-                #                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
-                # cv2.imshow('Frame', img)
-                
-                if recording: 
+                if recording and video_writer is not None: 
                     # Only process if marker ID 1 is detected
-                    pose_data_list.append((time.time(), insect_pose, data))
+                    frame_no += 1
+                    video_writer.write(img)
+                    stimulation_log.append((time.time(), frame_no, data))
                 
                 # Reset data to empty list. 
                 data = ""
